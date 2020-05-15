@@ -73,7 +73,10 @@ class Node:
 			if(self.successor == (self.host, self.port)):
 				self.successor = address
 				self.predecessor = address
-				client.send(dumps({"message":"join case 2"}).encode('utf-8'))
+				to_send = {
+					"message": "join corner case",
+				}
+				client.send(dumps(to_send).encode('utf-8'))
 			else:
 				return_addr = self.lookup(address)
 				to_send = {
@@ -87,7 +90,10 @@ class Node:
 			if(self.successor == (self.host, self.port)):
 				self.successor = address
 				self.predecessor = address
-				client.send(dumps({"message":"join case 2"}).encode('utf-8'))
+				to_send = {
+					"message": "join corner case",
+				}
+				client.send(dumps(to_send).encode('utf-8'))
 			else:
 				return_addr = self.lookup(address)
 				to_send = {
@@ -133,7 +139,7 @@ class Node:
 			temp.send(dumps(to_send).encode("utf-8"))
 			data_received = temp.recv(2048).decode('utf-8')	
 			data_extracted = loads(data_received)
-			if(data_extracted["message"] == "join case 2"):
+			if(data_extracted["message"] == "join corner case"):
 				self.successor = joiningAddr
 				self.predecessor = joiningAddr
 			else:
