@@ -27,8 +27,9 @@ class Node:
 		self.addr = (self.host, self.port)
 		self.successor = self.addr
 		self.predecessor = self.addr
-		threading.Thread(target = self.pinging).start()
 		# additional state variables
+		threading.Thread(target = self.pinging).start()
+		self.successorssuccessor = self.addr
 
 	def hasher(self, key):
 		'''
@@ -53,7 +54,19 @@ class Node:
 				data_received = loads(predecessor)
 				addr_recv = (data_received["host"], data_received["port"])
 
-				if addr_recv != self.addr:
+				new_socket = socket.socket()
+				new_socket.connect(self.successor)
+				to_send = {
+					"message": "Get Successor"
+				}
+				new_socket.send(dumps(to_send).encode('utf-8'))
+				predecessor = new_socket.recv(2048).decode('utf-8')
+				data_received_suc = loads(predecessor)
+				addr_recv_suc = (data_received_suc["host"], data_received_suc["port"])
+				self.successorssuccessor = addr_recv_suc
+				new_socket.close()
+
+				if addr_recv != self.addr:			
 					try:
 						self.predecessor = addr_recv
 						socket_2 = socket.socket()
@@ -87,6 +100,15 @@ class Node:
 					socket_4.send(dumps(to_send).encode("utf-8"))
 					socket_4.close()
 			except:
+				self.successor = self.successorssuccessor
+				# new_socket_2 = socket.socket()
+				# new_socket_2.connect(self.successor)
+				# to_send = {
+				# 	"message": "Update Predecessor",
+				# 	"host": self.host,
+				# 	"port": self.port
+				# }
+				# new_socket_2.send(dumps(to_send).encode("utf-8"))
 				pass
 
 	def lookup(self, addr):
@@ -175,6 +197,12 @@ class Node:
 			to_send = {
 				"host": self.predecessor[0],
 				"port": self.predecessor[1]
+			}
+			client.send(dumps(to_send).encode("utf-8"))
+		elif(message == "Get Successor"):
+			to_send = {
+				"host": self.successor[0],
+				"port": self.successor[1]
 			}
 			client.send(dumps(to_send).encode("utf-8"))
 		elif(message == "Update Predecessor"):
@@ -346,7 +374,7 @@ class Node:
 		self.successor = (self.host, self.port)
 		self.predecessor = (self.host, self.port)
 		
-		self.kill()
+		# self.kill()
 
 
 	def sendFile(self, soc, fileName):
