@@ -78,6 +78,14 @@ class Node:
 					except:
 						socket_2.close()
 						socket_3.close()
+					
+					socket_4 = socket.socket()
+					socket_4.connect(self.successor)
+					to_send = {
+						"message": "rehash files"
+					}
+					socket_4.send(dumps(to_send).encode("utf-8"))
+					socket_4.close()
 			except:
 				pass
 
@@ -196,7 +204,21 @@ class Node:
 					"message": "no"
 				}
 			client.send(dumps(to_send).encode("utf-8"))
-			
+		elif(message == "rehash files"):
+			temp_backup = self.files
+			self.files = []
+			for i in temp_backup:
+				new_assigned_node = self.file_lookup(i)
+				try:
+					temp = socket.socket()
+					temp.connect(new_assigned_node)
+					to_send = {
+					"message": "putting file",
+					"filename": i
+					}
+					temp.send(dumps(to_send).encode('utf-8'))
+				except:
+					pass
 		client.close()
 
 	def listener(self):
