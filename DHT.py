@@ -80,6 +80,7 @@ class Node:
 						socket_3.close()
 			except:
 				pass
+
 	def lookup(self, addr):
 		self_key = self.key
 		successor_key = self.hasher(self.successor[0]+str(self.successor[1]))
@@ -100,6 +101,26 @@ class Node:
 			data_extracted = loads(data_received)
 			temp.close()
 			return (data_extracted["host"], data_extracted["port"])
+
+	def file_lookup(self, filename):
+		self_key = self.key
+		successor_key = self.hasher(self.successor[0]+str(self.successor[1]))
+		to_insert = self.hasher(filename)
+
+		if (((to_insert < successor_key) and (to_insert < self_key)) and (self_key > successor_key)) or (((to_insert > successor_key) and (to_insert > self_key)) and (self_key > successor_key)) or ((to_insert > self_key) and (to_insert < successor_key)):
+			return self.successor
+		else:
+			temp = socket.socket()
+			temp.connect(self.successor)
+			to_send = {
+				"message": "file lookup forwarded",
+				"filename": filename
+			}
+			temp.send(dumps(to_send).encode("utf-8"))
+			data_received = temp.recv(2048).decode("utf-8")
+			data_extracted = loads(data_received)
+			temp.close()
+			return (data_extracted["filelocation"][0], data_extracted["filelocation"][1])
 
 	def handleConnection(self, client, addr):
 		'''
@@ -152,6 +173,30 @@ class Node:
 			self.predecessor = (data["host"], data["port"])
 		elif(message == "Update Successor"):
 			self.successor = (data["host"], data["port"])
+		elif(message == "file lookup forwarded"):
+			filename = data["filename"]
+			filelocation = self.file_lookup(filename)
+			to_send = {
+				"message": "file lookup 2",
+				"filelocation": filelocation
+			}
+			client.send(dumps(to_send).encode('utf-8'))
+		elif(message == "putting file"):
+			filename = data["filename"]
+			self.files.append(filename)
+		elif(message == "give file"):
+			filename = data["filename"]
+			to_send = {}
+			if filename in self.files:
+				to_send = {
+					"message": "yes"
+				}
+			else:
+				to_send = {
+					"message": "no"
+				}
+			client.send(dumps(to_send).encode("utf-8"))
+			
 		client.close()
 
 	def listener(self):
@@ -202,13 +247,37 @@ class Node:
 		Responsible node should then replicate the file on appropriate node. SEE MANUAL FOR DETAILS. Responsible node should save the files
 		in directory given by host_port e.g. "localhost_20007/file.py".
 		'''
+		if fileName != "":
+			filelocation = self.file_lookup(fileName)
+			temp = socket.socket()
+			temp.connect(filelocation)
+			to_send = {
+				"message": "putting file",
+				"filename": fileName
+			}
+			temp.send(dumps(to_send).encode('utf-8'))
+			temp.close()
 		
 	def get(self, fileName):
 		'''
 		This function finds node responsible for file given by fileName, gets the file from responsible node, saves it in current directory
 		i.e. "./file.py" and returns the name of file. If the file is not present on the network, return None.
 		'''
-
+		if fileName != "":
+			fileaddress = self.file_lookup(fileName)
+			temp = socket.socket()
+			temp.connect(fileaddress)
+			to_send = {
+				"message": "give file",
+				"filename": fileName
+			}
+			temp.send(dumps(to_send).encode("utf-8"))
+			data_received = temp.recv(2048).decode("utf-8")
+			data_extracted = loads(data_received)
+			temp.close()
+			if(data_extracted["message"] == "yes"):
+				return fileName
+		return None
 		
 	def leave(self):
 		'''
