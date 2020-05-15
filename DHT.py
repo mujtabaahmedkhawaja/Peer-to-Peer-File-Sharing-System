@@ -41,43 +41,45 @@ class Node:
 
 	def pinging(self):
 		while self.stop == False:
-			time.sleep(0.5)
-			# For predecessor for successor
-			predecessorsocket = socket.socket()
-			predecessorsocket.connect(self.successor)
-			to_send = {
-				"message": "Get Predecessor"
-			}
-			predecessorsocket.send(dumps(to_send).encode('utf-8'))
-			predecessor = predecessorsocket.recv(2048).decode('utf-8')
-			data_received = loads(predecessor)
-			addr_recv = (data_received["host"], data_received["port"])
+			try:
+				time.sleep(0.5)
+				socket_1 = socket.socket()
+				socket_1.connect(self.successor)
+				to_send = {
+					"message": "Get Predecessor"
+				}
+				socket_1.send(dumps(to_send).encode('utf-8'))
+				predecessor = socket_1.recv(2048).decode('utf-8')
+				data_received = loads(predecessor)
+				addr_recv = (data_received["host"], data_received["port"])
 
-			if addr_recv != (self.host, self.port):
-				try:
-					self.predecessor = addr_recv
-					update_successorsocket = socket.socket() # send a message to predecessor so it can update its successor
-					update_successorsocket.connect(self.predecessor)
-					to_send = {
-						"message": "Update Successor",
-						"host": self.host,
-						"port": self.port
-					}
-					update_successorsocket.send(dumps(to_send).encode('utf-8'))
-					update_successorsocket.close()
-					update_predecessorsocket = socket.socket() #send a message to successor so it can update its predecessor
-					update_predecessorsocket.connect(self.successor)
-					to_send = {
-						"message": "Update Predecessor",
-						"host": self.host,
-						"port": self.port
-					}
-					update_predecessorsocket.send(dumps(to_send).encode('utf-8')) 
-					update_predecessorsocket.close()
-				except:
-					update_predecessorsocket.close()
-					update_successorsocket.close()
+				if addr_recv != self.addr:
+					try:
+						self.predecessor = addr_recv
+						socket_2 = socket.socket()
+						socket_2.connect(self.predecessor)
+						to_send = {
+							"message": "Update Successor",
+							"host": self.addr[0],
+							"port": self.addr[1]
+						}
+						socket_2.send(dumps(to_send).encode('utf-8'))
+						socket_2.close()
 
+						socket_3 = socket.socket()
+						socket_3.connect(self.successor)
+						to_send = {
+							"message": "Update Predecessor",
+							"host": self.addr[0],
+							"port": self.addr[1]
+						}
+						socket_3.send(dumps(to_send).encode('utf-8')) 
+						socket_3.close()
+					except:
+						socket_2.close()
+						socket_3.close()
+			except:
+				pass
 	def lookup(self, addr):
 		self_key = self.key
 		successor_key = self.hasher(self.successor[0]+str(self.successor[1]))
