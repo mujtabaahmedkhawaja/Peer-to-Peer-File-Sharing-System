@@ -217,6 +217,7 @@ class Node:
 					"filename": i
 					}
 					temp.send(dumps(to_send).encode('utf-8'))
+					temp.close()
 				except:
 					pass
 		client.close()
@@ -307,6 +308,46 @@ class Node:
 		it should send its share of file to the new responsible node, close all the threads and leave. You can close listener thread
 		by setting self.stop flag to True
 		'''
+
+		socket_1 = socket.socket()
+		socket_1.connect(self.successor)
+		to_send = {
+			"message": "Update Predecessor",
+			"host": self.predecessor[0],
+			"port": self.predecessor[1]
+		}
+		socket_1.send(dumps(to_send).encode("utf-8"))
+		socket_1.close()
+
+		socket_2 = socket.socket()
+		socket_2.connect(self.predecessor)
+		to_send = {
+			"message": "Update Successor",
+			"host": self.successor[0],
+			"port": self.successor[1]
+		}
+		socket_2.send(dumps(to_send).encode("utf-8"))
+		socket_2.close()
+
+		for i in self.files:
+			new_assigned_node = self.file_lookup(i)
+			try:
+				temp = socket.socket()
+				temp.connect(new_assigned_node)
+				to_send = {
+				"message": "putting file",
+				"filename": i
+				}
+				temp.send(dumps(to_send).encode('utf-8'))
+				temp.close()
+			except:
+				pass
+
+		self.successor = (self.host, self.port)
+		self.predecessor = (self.host, self.port)
+		
+		self.kill()
+
 
 	def sendFile(self, soc, fileName):
 		''' 
