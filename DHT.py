@@ -3,7 +3,7 @@ import threading
 import os
 import time
 import hashlib
-
+from json import dumps, loads
 
 class Node:
 	def __init__(self, host, port):
@@ -24,8 +24,9 @@ class Node:
 		DO NOT EDIT ANYTHING ABOVE THIS LINE
 		'''
 		# Set value of the following variables appropriately to pass Intialization test
-		self.successor = None
-		self.predecessor = None
+		self.addr = (self.host, self.port)
+		self.successor = self.addr
+		self.predecessor = self.addr
 		# additional state variables
 
 
@@ -39,11 +40,63 @@ class Node:
 		'''
 		return int(hashlib.md5(key.encode()).hexdigest(), 16) % self.N
 
+	def lookup(self, addr):
+		self_key = self.key
+		successor_key = self.hasher(self.successor[0]+str(self.successor[1]))
+		to_insert = self.hasher(addr[0]+str(addr[1]))
+
+		if (((to_insert < successor_key) and (to_insert < self_key)) and (self_key > successor_key)) or (((to_insert > successor_key) and (to_insert > self_key)) and (self_key > successor_key)) or ((to_insert > self_key) and (to_insert < successor_key)):
+			return self.successor
+		else:
+			temp = socket.socket()
+			temp.connect(self.successor)
+			to_send = {
+				"message": "joining lookup forwarded",
+				"host": addr[0],
+				"port": addr[1]
+			}
+			temp.send(dumps(to_send).encode("utf-8"))
+			data_received = temp.recv(2048).decode("utf-8")
+			data_extracted = loads(data_received)
+			temp.close()
+			return (data_extracted["host"], data_extracted["port"])
 
 	def handleConnection(self, client, addr):
 		'''
 		 Function to handle each inbound connection, called as a thread from the listener.
 		'''
+		temp = client.recv(2048).decode("utf-8")
+		data = loads(temp)
+		message = data["message"]
+		if(message == "joining request"):
+			address = (data["host"], data["port"])
+			if(self.successor == (self.host, self.port)):
+				self.successor = address
+				self.predecessor = address
+				client.send(dumps({"message":"join case 2"}).encode('utf-8'))
+			else:
+				return_addr = self.lookup(address)
+				to_send = {
+					"message": "index found",
+					"host": return_addr[0],
+					"port": return_addr[1]
+				}
+				client.send(dumps(to_send).encode("utf-8"))
+		elif(message == "joining lookup forwarded"):
+			address = (data["host"], data["port"]) 
+			if(self.successor == (self.host, self.port)):
+				self.successor = address
+				self.predecessor = address
+				client.send(dumps({"message":"join case 2"}).encode('utf-8'))
+			else:
+				return_addr = self.lookup(address)
+				to_send = {
+					"message": "forwarded addr",
+					"host": return_addr[0],
+					"port": return_addr[1]
+				}
+				client.send(dumps(to_send).encode("utf-8"))
+		client.close()
 
 	def listener(self):
 		'''
@@ -69,6 +122,23 @@ class Node:
 		This function handles the logic of a node joining. This function should do a lot of things such as:
 		Update successor, predecessor, getting files, back up files. SEE MANUAL FOR DETAILS.
 		'''
+		if joiningAddr != "":
+			temp = socket.socket()
+			temp.connect(joiningAddr)
+			to_send = {
+				"message": "joining request",
+				"host": self.host,
+				"port": self.port
+			}
+			temp.send(dumps(to_send).encode("utf-8"))
+			data_received = temp.recv(2048).decode('utf-8')	
+			data_extracted = loads(data_received)
+			if(data_extracted["message"] == "join case 2"):
+				self.successor = joiningAddr
+				self.predecessor = joiningAddr
+			else:
+				self.successor = (data_extracted["host"], data_extracted["port"])
+			temp.close()
 
 	def put(self, fileName):
 		'''
