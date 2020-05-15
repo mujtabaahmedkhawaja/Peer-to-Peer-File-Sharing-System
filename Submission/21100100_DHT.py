@@ -113,19 +113,19 @@ class Node:
 				}
 				new_socket_2.send(dumps(to_send).encode("utf-8"))
 				new_socket_2.close()
-
-				# for i in self.files:
-				# 	try:
-				# 		new_socket_2 = socket.socket()
-				# 		new_socket_2.connect(self.successor)
-				# 		to_send = {
-				# 		"message": "putting file in backup",
-				# 		"filename": i
-				# 		}
-				# 		new_socket_2.send(dumps(to_send).encode('utf-8'))
-				# 		new_socket_2.close()
-				# 	except:
-				# 		pass
+				print("LOLOLOL")
+				for i in self.files:
+					try:
+						new_socket_2 = socket.socket()
+						new_socket_2.connect(self.successor)
+						to_send = {
+						"message": "putting file in backup",
+						"filename": i
+						}
+						new_socket_2.send(dumps(to_send).encode('utf-8'))
+						new_socket_2.close()
+					except:
+						pass
 
 	def lookup(self, addr):
 		self_key = self.key
@@ -259,6 +259,7 @@ class Node:
 				except:
 					pass
 		elif(message == "putting file in backup"):
+			print("backup", filename)
 			filename = data["filename"]
 			self.backUpFiles.append(filename)
 		client.close()
