@@ -80,7 +80,7 @@ class Node:
 			else:
 				return_addr = self.lookup(address)
 				to_send = {
-					"message": "index found",
+					"message": "position found",
 					"host": return_addr[0],
 					"port": return_addr[1]
 				}
