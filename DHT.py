@@ -27,9 +27,8 @@ class Node:
 		self.addr = (self.host, self.port)
 		self.successor = self.addr
 		self.predecessor = self.addr
+		threading.Thread(target = self.pinging).start()
 		# additional state variables
-
-
 
 	def hasher(self, key):
 		'''
@@ -39,6 +38,45 @@ class Node:
 			For a file: self.hasher(file)
 		'''
 		return int(hashlib.md5(key.encode()).hexdigest(), 16) % self.N
+
+	def pinging(self):
+		while self.stop == False:
+			time.sleep(0.5)
+			# For predecessor for successor
+			predecessorsocket = socket.socket()
+			predecessorsocket.connect(self.successor)
+			to_send = {
+				"message": "Get Predecessor"
+			}
+			predecessorsocket.send(dumps(to_send).encode('utf-8'))
+			predecessor = predecessorsocket.recv(2048).decode('utf-8')
+			data_received = loads(predecessor)
+			addr_recv = (data_received["host"], data_received["port"])
+
+			if addr_recv != (self.host, self.port):
+				try:
+					self.predecessor = addr_recv
+					update_successorsocket = socket.socket() # send a message to predecessor so it can update its successor
+					update_successorsocket.connect(self.predecessor)
+					to_send = {
+						"message": "Update Successor",
+						"host": self.host,
+						"port": self.port
+					}
+					update_successorsocket.send(dumps(to_send).encode('utf-8'))
+					update_successorsocket.close()
+					update_predecessorsocket = socket.socket() #send a message to successor so it can update its predecessor
+					update_predecessorsocket.connect(self.successor)
+					to_send = {
+						"message": "Update Predecessor",
+						"host": self.host,
+						"port": self.port
+					}
+					update_predecessorsocket.send(dumps(to_send).encode('utf-8')) 
+					update_predecessorsocket.close()
+				except:
+					update_predecessorsocket.close()
+					update_successorsocket.close()
 
 	def lookup(self, addr):
 		self_key = self.key
@@ -102,6 +140,16 @@ class Node:
 					"port": return_addr[1]
 				}
 				client.send(dumps(to_send).encode("utf-8"))
+		elif(message == "Get Predecessor"):
+			to_send = {
+				"host": self.predecessor[0],
+				"port": self.predecessor[1]
+			}
+			client.send(dumps(to_send).encode("utf-8"))
+		elif(message == "Update Predecessor"):
+			self.predecessor = (data["host"], data["port"])
+		elif(message == "Update Successor"):
+			self.successor = (data["host"], data["port"])
 		client.close()
 
 	def listener(self):
